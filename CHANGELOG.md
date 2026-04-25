@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.1 — 2026-04-25
+## 1.0.0 — 2026-04-25
 Initial release.
 
 - Composite action: no JavaScript, no Docker, runs natively on `ubuntu-latest`, `macos-latest`, and `windows-latest`
