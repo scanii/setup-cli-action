@@ -14,7 +14,7 @@ GitHub Action that downloads [scanii-cli](https://github.com/scanii/scanii-cli),
 | Input | Required | Default | Description |
 |---|---|---|---|
 | `version` | No | `latest` | scanii-cli version to install. Accepts `latest` or a semver string without a leading `v` (e.g., `1.3.0`). |
-| `callback-delay` | No | `0` | Milliseconds to delay callback delivery. Passed through as `--callback-delay` to scanii-cli. |
+| `callback-delay` | No | `0` | Duration to delay callback delivery. Accepts Go duration strings (e.g. `500ms`, `1s`). Passed through as `--callback-wait` to scanii-cli. |
 
 ## Outputs
 

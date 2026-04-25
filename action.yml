@@ -13,8 +13,9 @@ inputs:
     default: 'latest'
   callback-delay:
     description: >
-      Milliseconds to delay callback delivery. Passed through as --callback-delay
-      to scanii-cli on startup. Defaults to 0.
+      Duration to delay callback delivery. Passed through as --callback-wait to
+      scanii-cli on startup. Accepts Go duration strings (e.g. 500ms, 1s).
+      Defaults to 0 (use scanii-cli's built-in default).
     required: false
     default: '0'
 
@@ -102,7 +103,12 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        sc server --callback-delay "${{ inputs.callback-delay }}" &
+        DELAY="${{ inputs.callback-delay }}"
+        if [ "$DELAY" = "0" ]; then
+          sc server &
+        else
+          sc server --callback-wait "$DELAY" &
+        fi
         echo "Server started in background (PID $!)"
 
     - name: Wait for scanii-cli readiness
