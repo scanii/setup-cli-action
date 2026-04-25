@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 — 2026-04-25
+
+- Removed internal implementation notes from README (not user-facing)
+- Added link from worked example to `examples/basic.yml`
+
 ## 1.0.0 — 2026-04-25
 
 Initial release.
