@@ -116,7 +116,7 @@ runs:
       run: |
         set -euo pipefail
         for i in $(seq 1 30); do
-          if curl -sf http://localhost:4000/v2.2/ping > /dev/null 2>&1; then
+          if curl -sf -u key:secret http://localhost:4000/v2.2/ping > /dev/null 2>&1; then
             echo "scanii-cli is ready (attempt $i)"
             exit 0
           fi
