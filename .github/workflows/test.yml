@@ -1,0 +1,40 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup scanii-cli
+        id: setup
+        uses: ./
+
+      - name: Verify server is reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Endpoint: ${{ steps.setup.outputs.endpoint }}"
+          echo "Version:  ${{ steps.setup.outputs.version }}"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -u key:secret \
+            http://localhost:4000/v2.2/ping)
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: expected HTTP 200 from ping, got $STATUS" >&2
+            exit 1
+          fi
+          echo "Ping returned HTTP $STATUS — OK"

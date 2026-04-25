@@ -1,0 +1,121 @@
+name: Setup scanii-cli
+description: Download and start scanii-cli as a background test server on localhost:4000
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  version:
+    description: >
+      scanii-cli version to install. Accepts 'latest' or a semver string without
+      the leading 'v' (e.g., '1.3.0'). Defaults to 'latest'.
+    required: false
+    default: 'latest'
+  callback-delay:
+    description: >
+      Milliseconds to delay callback delivery. Passed through as --callback-delay
+      to scanii-cli on startup. Defaults to 0.
+    required: false
+    default: '0'
+
+outputs:
+  version:
+    description: The actual version of scanii-cli that was installed (resolved from 'latest' if applicable).
+    value: ${{ steps.resolve.outputs.version }}
+  endpoint:
+    description: The base URL of the running scanii-cli server. Always http://localhost:4000.
+    value: 'http://localhost:4000'
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve scanii-cli version
+      id: resolve
+      shell: bash
+      run: |
+        set -euo pipefail
+        VERSION="${{ inputs.version }}"
+        if [ "$VERSION" = "latest" ]; then
+          VERSION=$(curl -fsSL \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            https://api.github.com/repos/scanii/scanii-cli/releases/latest \
+            | grep '"tag_name":' \
+            | sed -E 's/.*"v?([^"]+)".*/\1/')
+        fi
+        VERSION="${VERSION#v}"
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "Resolved scanii-cli version: $VERSION"
+
+    - name: Download and install scanii-cli
+      id: install
+      shell: bash
+      run: |
+        set -euo pipefail
+        VERSION="${{ steps.resolve.outputs.version }}"
+
+        case "${{ runner.os }}" in
+          Linux)   OS=linux  ; EXT=tar.gz ;;
+          macOS)   OS=darwin ; EXT=tar.gz ;;
+          Windows) OS=windows; EXT=zip    ;;
+          *)
+            echo "ERROR: unsupported runner OS: ${{ runner.os }}" >&2
+            exit 1
+            ;;
+        esac
+
+        case "$(uname -m)" in
+          x86_64|amd64)  ARCH=amd64 ;;
+          arm64|aarch64) ARCH=arm64 ;;
+          *)             ARCH=amd64 ;;
+        esac
+
+        ASSET="scanii-cli-${VERSION}-${OS}-${ARCH}.${EXT}"
+        URL="https://github.com/scanii/scanii-cli/releases/download/v${VERSION}/${ASSET}"
+        echo "Downloading: $URL"
+
+        SC_DIR="$RUNNER_TEMP/scanii-cli"
+        mkdir -p "$SC_DIR"
+        curl -fsSL "$URL" -o "${SC_DIR}/${ASSET}"
+
+        if [ "$EXT" = "tar.gz" ]; then
+          tar -xzf "${SC_DIR}/${ASSET}" -C "${SC_DIR}"
+        else
+          unzip -q "${SC_DIR}/${ASSET}" -d "${SC_DIR}"
+        fi
+
+        BINEXT=""
+        [ "$OS" = "windows" ] && BINEXT=".exe"
+        # GoReleaser wrap_in_directory: true — binary is one level deep, not at archive root
+        BINDIR="${SC_DIR}/scanii-cli-${VERSION}-${OS}-${ARCH}"
+
+        if [ ! -f "${BINDIR}/sc${BINEXT}" ]; then
+          echo "ERROR: expected binary not found at ${BINDIR}/sc${BINEXT}" >&2
+          ls -R "${SC_DIR}" >&2
+          exit 1
+        fi
+
+        chmod +x "${BINDIR}/sc${BINEXT}" 2>/dev/null || true
+        echo "${BINDIR}" >> "$GITHUB_PATH"
+        echo "Installed: ${BINDIR}/sc${BINEXT}"
+
+    - name: Start scanii-cli server
+      shell: bash
+      run: |
+        set -euo pipefail
+        sc server --callback-delay "${{ inputs.callback-delay }}" &
+        echo "Server started in background (PID $!)"
+
+    - name: Wait for scanii-cli readiness
+      shell: bash
+      run: |
+        set -euo pipefail
+        for i in $(seq 1 30); do
+          if curl -sf http://localhost:4000/v2.2/ping > /dev/null 2>&1; then
+            echo "scanii-cli is ready (attempt $i)"
+            exit 0
+          fi
+          echo "  attempt $i/30 — not ready, sleeping 1s"
+          sleep 1
+        done
+        echo "ERROR: scanii-cli did not become ready within 30 seconds" >&2
+        exit 1
