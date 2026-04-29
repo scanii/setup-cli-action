@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.1 — 2026-04-29
+## 1.0.3 — 2026-04-29
 
 - Fix: detach `sc server` from the parent shell on Windows. MSYS2 bash does not properly
   detach native Windows processes with bare `&`; when the shell exits the step, sc.exe
