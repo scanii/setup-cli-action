@@ -104,12 +104,16 @@ runs:
       run: |
         set -euo pipefail
         DELAY="${{ inputs.callback-delay }}"
+        LOG="$RUNNER_TEMP/scanii-cli.log"
+
         if [ "$DELAY" = "0" ]; then
-          sc server &
+          nohup sc server > "$LOG" 2>&1 &
         else
-          sc server --callback-wait "$DELAY" &
+          nohup sc server --callback-wait "$DELAY" > "$LOG" 2>&1 &
         fi
+        disown
         echo "Server started in background (PID $!)"
+        echo "Server log: $LOG"
 
     - name: Wait for scanii-cli readiness
       shell: bash
@@ -124,4 +128,9 @@ runs:
           sleep 1
         done
         echo "ERROR: scanii-cli did not become ready within 30 seconds" >&2
+        if [ -f "$RUNNER_TEMP/scanii-cli.log" ]; then
+          echo "--- scanii-cli output ---" >&2
+          cat "$RUNNER_TEMP/scanii-cli.log" >&2
+          echo "--- end log ---" >&2
+        fi
         exit 1

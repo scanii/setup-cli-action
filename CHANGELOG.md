@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 — 2026-04-29
+
+- Fix: detach `sc server` from the parent shell on Windows. MSYS2 bash does not properly
+  detach native Windows processes with bare `&`; when the shell exits the step, sc.exe
+  inherits closed stdio and dies on its first write. Fix: redirect stdout/stderr to
+  `$RUNNER_TEMP/scanii-cli.log`, add `nohup`, and `disown` the job. The log file is also
+  surfaced on the timeout path to ease future diagnostics.
+
 ## 1.0.0 — 2026-04-25
 Initial release.
 
